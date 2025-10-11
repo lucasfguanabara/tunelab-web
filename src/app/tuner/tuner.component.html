@@ -1,0 +1,21 @@
+<div class="tuner">
+    <h2>TuneLab</h2>
+
+    <div class="display">
+        <div class="note">{{ note() }}</div>
+        <div class="freq">{{ freq() | number: '1.0-1' }} Hz</div>
+        <div class="cents">{{ cents() }} cents</div>
+    </div>
+
+    <div class="needle-wrap">
+        <div class="needle" [style.transform]="'rotate(' + (cents() * 0.6) + 'deg)'"></div>
+        <div class="center-line"></div>
+    </div>
+
+    <div class="controls">
+        <button (click)="start()" [disabled]="running()">Pressione para afinar</button>
+        <button (click)="stop()" [disabled]="!running()">Parar</button>
+    </div>
+
+
+</div>
