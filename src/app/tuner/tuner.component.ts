@@ -173,4 +173,7 @@ export class TunerComponent implements OnDestroy {
     return frequency;
 
   }
+
+  
 }
+
