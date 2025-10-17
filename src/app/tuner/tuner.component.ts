@@ -14,12 +14,19 @@ export class TunerComponent implements OnDestroy {
   private mediaStream: MediaStream | null = null;
   private rafId = 0;
 
+// sinal captura/pitch detection está rodando
   running = signal(false);
+// armazena o nome da nota detectada (ex 'A', 'C#' quando sem som)
   note = signal('-');
+// armazena a frequência detectada em Hz
   freq = signal(0);
+// armazena o desvio em cents em relação à nota mais próxima
   cents = signal(0);
 
+// A4/ referencia da afinação em Hz (la acima = 440 Hz)
   private readonly A4 = 440;
+
+// Lista de nomes de notas por semitom
   private readonly noteStrings = [
     'C',
     'C#',
@@ -35,11 +42,14 @@ export class TunerComponent implements OnDestroy {
     'B',
   ];
 
-  //padrao 6 cord E A D G B e
-
-
-//
-
+// presets de afinação com nome e notas das cordas [add +]
+  tunings = [
+    { name: 'Standard', strings: ['E', 'A', 'D', 'G', 'B', 'E'] },
+    { name: 'Drop D', strings: ['D', 'A', 'D', 'G', 'B', 'E'] },
+    { name: 'Drop C', strings: ['C', 'G', 'C', 'F', 'A', 'D'] },
+  ];
+// tuning selecionada
+  selectedTuning = this.tunings[0];
 
   async start() {
     if (this.running()) return;
@@ -49,7 +59,7 @@ export class TunerComponent implements OnDestroy {
         video: false,
       });
     } catch (err) {
-      alert('Não foi possível acessar o microfone: ' + err);
+      alert('Unable to access microphone: ' + err);
       return;
     }
 
@@ -84,37 +94,50 @@ export class TunerComponent implements OnDestroy {
     this.stop();
   }
 
-  private updatePitch() {
-    if (!this.analyser || !this.audioContext) return;
 
-    const bufferLength = this.analyser.fftSize;
-    const buf = new Float32Array(bufferLength);
-    this.analyser.getFloatTimeDomainData(buf);
+private silenceFrames = 0;
+private readonly silenceThreshold = 12; // mantém a nota por 0.2s após o som sumir
 
-    const ac = this.autoCorrelate(buf, this.audioContext.sampleRate);
-    if (ac !== -1) {
-      this.freq.set(ac);
-      const noteNum = this.frequencyToNoteNumber(ac);
-      const noteName = this.noteStrings[Math.round(noteNum) % 12];
-      this.note.set(noteName);
-      this.cents.set(this.centsOffFromPitch(ac, noteNum));
+private updatePitch() {
+  if (!this.analyser || !this.audioContext) return;
+
+  const bufferLength = this.analyser.fftSize;
+  const buf = new Float32Array(bufferLength);
+  this.analyser.getFloatTimeDomainData(buf);
+
+  const ac = this.autoCorrelate(buf, this.audioContext.sampleRate);
+  if (ac !== -1) {
+    this.freq.set(ac);
+    const noteNum = this.frequencyToNoteNumber(ac);
+    const noteName = this.noteStrings[Math.round(noteNum) % 12];
+    this.note.set(noteName);
+    this.cents.set(this.centsOffFromPitch(ac, noteNum));
+    this.silenceFrames = 0;
+  } else {
+    if (this.silenceFrames < this.silenceThreshold) {
+      this.silenceFrames++;
     } else {
       this.note.set('-');
       this.freq.set(0);
       this.cents.set(0);
     }
-
-    this.rafId = requestAnimationFrame(() => this.updatePitch());
   }
 
+  this.rafId = requestAnimationFrame(() => this.updatePitch());
+}
+
+// converte frequência (Hz) em número MIDI de nota (float)
   private frequencyToNoteNumber(frequency: number) {
     return 12 * (Math.log(frequency / this.A4) / Math.log(2)) + 69;
   }
 
+// calcula quantos cents a frequenciaa está afastada da nota arredondada
   private centsOffFromPitch(frequency: number, noteNumberFloat: number) {
     const diff = noteNumberFloat - Math.round(noteNumberFloat);
     return Math.round(diff * 100);
   }
+
+
 
   private autoCorrelate(buf: Float32Array, sampleRate: number): number {
     const SIZE = buf.length;
@@ -168,12 +191,17 @@ export class TunerComponent implements OnDestroy {
     const b = (x3 - x1) / 2;
     if (a) T0 = T0 - b / (2 * a);
 
-
     const frequency = sampleRate / T0;
     return frequency;
-
   }
 
-  
+getSuggestedStrings(): string[] {
+  if (this.note() === '-') return [];
+  return this.selectedTuning.strings.filter(s => s === this.note());
 }
 
+
+  selectTuning(tuning: { name: string; strings: string[] }) {
+    this.selectedTuning = tuning;
+  }
+}

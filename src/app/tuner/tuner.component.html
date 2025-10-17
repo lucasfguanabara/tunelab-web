@@ -1,20 +1,57 @@
 <div class="tuner">
-    <h2>TuneLab</h2>
+    <h2>Afinador Guitarra Online</h2>
 
-    <div class="display">
-        <div class="note">{{ note() }}</div>
-        <div class="freq">{{ freq() | number: '1.0-1' }} Hz</div>
-        <div class="cents">{{ cents() }} cents</div>
+    <div class="tuning-select">
+        <button *ngFor="let tuning of tunings" [class.active]="tuning === selectedTuning"
+            (click)="selectTuning(tuning)">
+            {{ tuning.name }}
+        </button>
     </div>
 
-    <div class="needle-wrap">
-        <div class="needle" [style.transform]="'rotate(' + (cents() * 0.6) + 'deg)'"></div>
-        <div class="center-line"></div>
+    <div class="needle-arc">
+
+    <div class="arc-labels">
+        <span class="arc-label left">Desafinado</span>
+        <span class="arc-label center">Afinado</span>
+        <span class="arc-label right">Desafinado</span>
+    </div>
+        <div class="arc"></div>
+        <div class="needle" [ngClass]="{'in-tune': cents() === 0}"
+            [style.transform]="'translateX(-50%) rotate(' + (cents() * 0.6) + 'deg)'">
+
+            <div class="needle-dot"></div>
+        </div>
+
     </div>
 
-    <div class="controls">
-        <button (click)="start()" [disabled]="running()">Pressione para afinar</button>
-        <button (click)="stop()" [disabled]="!running()">Parar</button>
+    <div class="tuner-info">
+        <div class="note-detected">{{ note() }}</div>
+        <div class="freq-cents">
+            <span>{{ freq() | number:'1.0-1' }} Hz</span>
+            <span [ngClass]="{'sharp': cents() > 0, 'flat': cents() < 0}">
+                {{ cents() }} cents
+            </span>
+        </div>
+        <div class="string-suggestion" *ngIf="note() !== '-'">
+            Cordas sugeridas:
+            <span *ngFor="let string of getSuggestedStrings()" class="suggested-string">
+                {{ string }}
+            </span>
+        </div>
+    </div>
+
+    <div class="mic-control">
+        <button class="mic-btn" (click)="running() ? stop() : start()">
+            <span class="mic-icon">🎤</span>
+            <span>{{ running() ? 'Parar' : 'Toque para iniciar' }}</span>
+        </button>
+    </div>
+
+    <div class="strings-row">
+        <span *ngFor="let string of selectedTuning.strings" class="string-note"
+            [class.active-string]="note() === string">
+            {{ string }}
+        </span>
     </div>
 
 
